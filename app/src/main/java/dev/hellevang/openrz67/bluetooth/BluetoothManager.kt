@@ -1,6 +1,5 @@
 package dev.hellevang.openrz67.bluetooth
 
-import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.BluetoothLeScanner
 import android.content.Context
@@ -66,10 +65,12 @@ class BluetoothManager(
 
         scope.launch {
             try {
+                _connectionState.value = "Scanning for devices..."
                 val advertisement = Scanner {
                     filters = listOf(Filter.Service(TARGET_SERVICE_UUID))
                 }.advertisements.first()
 
+                _connectionState.value = "Device found, connecting..."
                 awaitAll(
                     async {
                         peripheral = scope.peripheral(advertisement)
@@ -89,7 +90,7 @@ class BluetoothManager(
                 }
             } catch (e: Exception) {
                 println("Failed to initialize Bluetooth: ${e.message}")
-                _connectionState.value = "Failed to initialize"
+                _connectionState.value = "Failed to initialize: ${e.message}"
             }
         }
     }
@@ -99,8 +100,6 @@ class BluetoothManager(
             .filter { it is State.Disconnected }
             .onEach {
                 val timeMillis = backoff(
-                    base = 500L,
-                    multiplier = 2f,
                     retry = connectionAttempt.getAndIncrement()
                 )
                 println("Waiting $timeMillis ms to reconnect...")
@@ -160,8 +159,8 @@ class BluetoothManager(
     }
 
     private fun backoff(
-        base: Long,
-        multiplier: Float,
+        base: Long = 500L,
+        multiplier: Float = 2f,
         retry: Int,
     ): Long = (base * multiplier.pow(retry - 1)).toLong()
 
