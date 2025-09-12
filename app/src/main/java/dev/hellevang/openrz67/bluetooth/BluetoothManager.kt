@@ -55,7 +55,8 @@ class BluetoothManager(
 
     enum class SignalType {
         Trigger,
-        ArduinoCountdown
+        ArduinoCountdown,
+        Button2
     }
 
     fun initialize() {
@@ -148,6 +149,15 @@ class BluetoothManager(
                             } else {
                                 println("Sending Arduino countdown stop signal")
                                 peripheral.write(characteristic, byteArrayOf(30.toByte()))
+                            }
+                        }
+                        SignalType.Button2 -> {
+                            if (on) {
+                                println("Sending button 2 press signal (bulb mode on)")
+                                peripheral.write(characteristic, byteArrayOf(21.toByte()))
+                            } else {
+                                println("Sending button 2 release signal (bulb mode off)")
+                                peripheral.write(characteristic, byteArrayOf(20.toByte()))
                             }
                         }
                     }

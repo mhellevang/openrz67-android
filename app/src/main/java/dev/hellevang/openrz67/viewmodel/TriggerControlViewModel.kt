@@ -25,6 +25,10 @@ class TriggerControlViewModel(
     private val _countdownTimeLeft = MutableStateFlow(0)
     val countdownTimeLeft: StateFlow<Int> = _countdownTimeLeft.asStateFlow()
     
+    // Bulb mode state
+    private val _isBulbActive = MutableStateFlow(false)
+    val isBulbActive: StateFlow<Boolean> = _isBulbActive.asStateFlow()
+    
     // Bluetooth state (forwarded from BluetoothManager)
     val connectionState: StateFlow<String> = bluetoothManager.connectionState
     val isConnected: StateFlow<Boolean> = bluetoothManager.isConnected
@@ -33,13 +37,21 @@ class TriggerControlViewModel(
     
     enum class TriggerType {
         Direct,
-        Countdown
+        Countdown,
+        Bulb
     }
     
     fun toggleTriggerType() {
+        // If leaving bulb mode and it's active, turn it off
+        if (_triggerType.value == TriggerType.Bulb && _isBulbActive.value) {
+            _isBulbActive.value = false
+            bluetoothManager.sendSignal(BluetoothManager.SignalType.Button2, false)
+        }
+        
         _triggerType.value = when (_triggerType.value) {
             TriggerType.Direct -> TriggerType.Countdown
-            TriggerType.Countdown -> TriggerType.Direct
+            TriggerType.Countdown -> TriggerType.Bulb
+            TriggerType.Bulb -> TriggerType.Direct
         }
     }
     
@@ -57,7 +69,16 @@ class TriggerControlViewModel(
                     startCountdown()
                 }
             }
+            TriggerType.Bulb -> {
+                toggleBulbMode()
+            }
         }
+    }
+    
+    private fun toggleBulbMode() {
+        val newState = !_isBulbActive.value
+        _isBulbActive.value = newState
+        bluetoothManager.sendSignal(BluetoothManager.SignalType.Button2, newState)
     }
     
     private fun startCountdown() {

@@ -27,6 +27,7 @@ fun TriggerButtonPanel(
     val triggerType by viewModel.triggerType.collectAsState()
     val startDelayedTrigger by viewModel.startDelayedTrigger.collectAsState()
     val countdownTimeLeft by viewModel.countdownTimeLeft.collectAsState()
+    val isBulbActive by viewModel.isBulbActive.collectAsState()
 
     Row(
         modifier = Modifier.padding(top = Dimens.ModeButtonTopPadding)
@@ -69,6 +70,17 @@ fun TriggerButtonPanel(
                 countdownTimeLeft = countdownTimeLeft
             )
         }
+        TriggerControlViewModel.TriggerType.Bulb -> {
+            Text(
+                fontSize = Dimens.BodyTextSize,
+                color = MaterialTheme.colors.onBackground,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentWidth(Alignment.CenterHorizontally)
+                    .padding(start = Dimens.StandardPadding, end = Dimens.StandardPadding),
+                text = if (isBulbActive) "LED is ON - Shutter is OPEN" else "Press button to toggle LED and shutter"
+            )
+        }
     }
 
     Button(
@@ -79,7 +91,11 @@ fun TriggerButtonPanel(
             .padding(top = Dimens.ButtonTopPadding),
         enabled = isConnected,
     ) {
-        Text(text = "Trigger shutter", modifier = Modifier.padding(end = Dimens.ButtonEndPadding))
+        val buttonText = when (triggerType) {
+            TriggerControlViewModel.TriggerType.Bulb -> if (isBulbActive) "Turn OFF" else "Turn ON"
+            else -> "Trigger shutter"
+        }
+        Text(text = buttonText, modifier = Modifier.padding(end = Dimens.ButtonEndPadding))
         Icon(
             imageVector = Icons.Default.Camera,
             contentDescription = null,
