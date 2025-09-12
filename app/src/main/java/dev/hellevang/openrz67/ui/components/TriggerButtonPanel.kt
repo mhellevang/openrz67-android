@@ -1,5 +1,6 @@
 package dev.hellevang.openrz67.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,9 +9,11 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.Button
 import androidx.compose.material.Icon
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Camera
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,7 +33,10 @@ fun TriggerButtonPanel(
     val isBulbActive by viewModel.isBulbActive.collectAsState()
 
     Row(
-        modifier = Modifier.padding(top = Dimens.ModeButtonTopPadding)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = Dimens.ModeButtonTopPadding),
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         ToggleButton(
             toggleButton = {
@@ -38,6 +44,20 @@ fun TriggerButtonPanel(
             },
             text = "Mode"
         )
+        
+        OutlinedButton(
+            onClick = {
+                viewModel.reconnectBluetooth()
+            },
+            enabled = !isConnected
+        ) {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = "Reconnect",
+                modifier = Modifier.padding(end = Dimens.ButtonEndPadding)
+            )
+            Text("Reconnect")
+        }
     }
     
     Text(

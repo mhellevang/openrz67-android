@@ -81,6 +81,10 @@ class TriggerControlViewModel(
         bluetoothManager.sendSignal(BluetoothManager.SignalType.Button2, newState)
     }
     
+    fun reconnectBluetooth() {
+        bluetoothManager.manualReconnect()
+    }
+    
     private fun startCountdown() {
         bluetoothManager.sendSignal(BluetoothManager.SignalType.ArduinoCountdown, true)
         _startDelayedTrigger.value = true

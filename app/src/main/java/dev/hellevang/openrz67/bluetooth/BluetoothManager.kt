@@ -100,11 +100,20 @@ class BluetoothManager(
         peripheral.state
             .filter { it is State.Disconnected }
             .onEach {
+                val currentAttempt = connectionAttempt.get()
                 val timeMillis = backoff(
                     retry = connectionAttempt.getAndIncrement()
                 )
-                println("Waiting $timeMillis ms to reconnect...")
-                delay(timeMillis)
+                
+                // Cap the backoff at 30 seconds max and reset after 10 failed attempts
+                val cappedTimeMillis = minOf(timeMillis, 30_000L)
+                if (currentAttempt >= 10) {
+                    println("Resetting connection attempts after 10 failures")
+                    connectionAttempt.set(1) // Reset but keep trying
+                }
+                
+                println("Waiting $cappedTimeMillis ms to reconnect (attempt ${currentAttempt + 1})...")
+                delay(cappedTimeMillis)
                 connect()
             }
             .launchIn(this)
@@ -173,6 +182,23 @@ class BluetoothManager(
         multiplier: Float = 2f,
         retry: Int,
     ): Long = (base * multiplier.pow(retry - 1)).toLong()
+
+    fun manualReconnect() {
+        scope.launch {
+            try {
+                _connectionState.value = "Manual reconnection..."
+                connectionAttempt.set(0) // Reset attempts for manual reconnect
+                if (this@BluetoothManager::peripheral.isInitialized) {
+                    connect()
+                } else {
+                    initialize()
+                }
+            } catch (e: Exception) {
+                println("Manual reconnection failed: ${e.message}")
+                _connectionState.value = "Manual reconnection failed: ${e.message}"
+            }
+        }
+    }
 
     fun cleanup() {
         scope.launch {
