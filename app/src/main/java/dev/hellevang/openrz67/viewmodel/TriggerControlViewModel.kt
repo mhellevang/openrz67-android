@@ -45,7 +45,7 @@ class TriggerControlViewModel(
         // If leaving bulb mode and it's active, turn it off
         if (_triggerType.value == TriggerType.Bulb && _isBulbActive.value) {
             _isBulbActive.value = false
-            bluetoothManager.sendSignal(BluetoothManager.SignalType.Button2, false)
+            bluetoothManager.sendSignal(BluetoothManager.SignalType.BulbMode, false)
         }
         
         _triggerType.value = when (_triggerType.value) {
@@ -78,7 +78,7 @@ class TriggerControlViewModel(
     private fun toggleBulbMode() {
         val newState = !_isBulbActive.value
         _isBulbActive.value = newState
-        bluetoothManager.sendSignal(BluetoothManager.SignalType.Button2, newState)
+        bluetoothManager.sendSignal(BluetoothManager.SignalType.BulbMode, newState)
     }
     
     fun reconnectBluetooth() {
