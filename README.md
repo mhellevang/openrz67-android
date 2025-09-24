@@ -11,4 +11,4 @@ The app works as intended for my use case, but I'm sure there are lots of improv
 - Trigger bulb mode (requires the camera to be set to bulb).
 
 ## Installation:
-I've yet to realse the app anywhere, so the only way to get it running is to build it yourself. 
+I've yet to release the app anywhere, so the only way to get it running is to build it yourself. 
