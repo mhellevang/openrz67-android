@@ -10,5 +10,7 @@ The app works as intended for my use case, but I'm sure there are lots of improv
 - Trigger a delayed trigger with a 10 seconds countdown
 - Trigger bulb mode (requires the camera to be set to bulb).
 
+<img src="docs/images/Direct.jpg" alt="Screenshot of Openrz67 Android" width="400"/>
+
 ## Installation:
 I've yet to release the app anywhere, so the only way to get it running is to build it yourself. 
