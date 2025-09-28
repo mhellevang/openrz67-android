@@ -132,6 +132,35 @@ class BluetoothManager(
         }
     }
 
+    fun sendMultiByteCountdown(durationSeconds: Int, start: Boolean = true): Job {
+        return scope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    val characteristic = characteristicOf(
+                        TARGET_SERVICE_UUID.toString(),
+                        TARGET_CHARACTERISTIC_UUID.toString()
+                    )
+                    
+                    val command: Byte = 3
+                    val duration: Byte = durationSeconds.toByte()
+                    val action: Byte = if (start) 1 else 0
+                    
+                    val data = byteArrayOf(command, duration, action)
+                    
+                    if (start) {
+                        println("Sending multi-byte countdown start: duration=${durationSeconds}s")
+                    } else {
+                        println("Sending multi-byte countdown stop")
+                    }
+                    
+                    peripheral.write(characteristic, data)
+                } catch (e: Exception) {
+                    println("Failed to send multi-byte countdown: ${e.message}")
+                }
+            }
+        }
+    }
+
     fun sendSignal(signalType: SignalType = SignalType.Trigger, on: Boolean = true): Job {
         return scope.launch {
             withContext(Dispatchers.IO) {

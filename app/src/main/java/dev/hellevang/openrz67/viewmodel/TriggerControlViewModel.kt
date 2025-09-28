@@ -25,6 +25,9 @@ class TriggerControlViewModel(
     private val _countdownTimeLeft = MutableStateFlow(0)
     val countdownTimeLeft: StateFlow<Int> = _countdownTimeLeft.asStateFlow()
     
+    private val _countdownDuration = MutableStateFlow(10)
+    val countdownDuration: StateFlow<Int> = _countdownDuration.asStateFlow()
+    
     // Bulb mode state
     private val _isBulbActive = MutableStateFlow(false)
     val isBulbActive: StateFlow<Boolean> = _isBulbActive.asStateFlow()
@@ -75,6 +78,12 @@ class TriggerControlViewModel(
         }
     }
     
+    fun setCountdownDuration(duration: Int) {
+        if (duration in 1..255) {
+            _countdownDuration.value = duration
+        }
+    }
+    
     private fun toggleBulbMode() {
         val newState = !_isBulbActive.value
         _isBulbActive.value = newState
@@ -86,22 +95,23 @@ class TriggerControlViewModel(
     }
     
     private fun startCountdown() {
-        bluetoothManager.sendSignal(BluetoothManager.SignalType.ArduinoCountdown, true)
+        bluetoothManager.sendMultiByteCountdown(_countdownDuration.value, true)
         _startDelayedTrigger.value = true
         startCountdownTimer()
     }
     
     private fun stopCountdown() {
-        bluetoothManager.sendSignal(BluetoothManager.SignalType.ArduinoCountdown, false)
+        bluetoothManager.sendMultiByteCountdown(_countdownDuration.value, false)
         _startDelayedTrigger.value = false
         stopCountdownTimer()
     }
     
     private fun startCountdownTimer() {
         countdownJob?.cancel()
-        _countdownTimeLeft.value = 10
+        val duration = _countdownDuration.value
+        _countdownTimeLeft.value = duration
         countdownJob = viewModelScope.launch {
-            repeat(10) {
+            repeat(duration) {
                 delay(1000)
                 _countdownTimeLeft.value = _countdownTimeLeft.value - 1
             }

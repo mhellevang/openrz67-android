@@ -1,8 +1,10 @@
 package dev.hellevang.openrz67.ui.components
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.Button
@@ -17,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import dev.hellevang.openrz67.ui.theme.Dimens
 import dev.hellevang.openrz67.viewmodel.TriggerControlViewModel
 
@@ -28,6 +31,7 @@ fun TriggerButtonPanel(
     val triggerType by viewModel.triggerType.collectAsState()
     val startDelayedTrigger by viewModel.startDelayedTrigger.collectAsState()
     val countdownTimeLeft by viewModel.countdownTimeLeft.collectAsState()
+    val countdownDuration by viewModel.countdownDuration.collectAsState()
     val isBulbActive by viewModel.isBulbActive.collectAsState()
 
     Row(
@@ -68,34 +72,36 @@ fun TriggerButtonPanel(
     
     Spacer(modifier = Modifier.padding(top = Dimens.SpacerTopPadding))
     
-    when (triggerType) {
-        TriggerControlViewModel.TriggerType.Direct -> {
-            Text(
-                fontSize = Dimens.BodyTextSize,
-                color = MaterialTheme.colors.onBackground,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentWidth(Alignment.CenterHorizontally)
-                    .padding(start = Dimens.StandardPadding, end = Dimens.StandardPadding),
-                text = "Press the button to take a picture"
-            )
-        }
-        TriggerControlViewModel.TriggerType.Countdown -> {
-            CountdownDisplay(
-                startDelayedTrigger = startDelayedTrigger,
-                countdownTimeLeft = countdownTimeLeft
-            )
-        }
-        TriggerControlViewModel.TriggerType.Bulb -> {
-            Text(
-                fontSize = Dimens.BodyTextSize,
-                color = MaterialTheme.colors.onBackground,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentWidth(Alignment.CenterHorizontally)
-                    .padding(start = Dimens.StandardPadding, end = Dimens.StandardPadding),
-                text = if (isBulbActive) "LED is ON - Shutter is OPEN" else "Press button to toggle LED and shutter"
-            )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp)
+            .padding(start = Dimens.StandardPadding, end = Dimens.StandardPadding),
+        contentAlignment = Alignment.Center
+    ) {
+        when (triggerType) {
+            TriggerControlViewModel.TriggerType.Direct -> {
+                Text(
+                    fontSize = Dimens.BodyTextSize,
+                    color = MaterialTheme.colors.onBackground,
+                    text = "Press the button to take a picture"
+                )
+            }
+            TriggerControlViewModel.TriggerType.Countdown -> {
+                CountdownDisplay(
+                    startDelayedTrigger = startDelayedTrigger,
+                    countdownTimeLeft = countdownTimeLeft,
+                    countdownDuration = countdownDuration,
+                    onDurationChange = { duration -> viewModel.setCountdownDuration(duration) }
+                )
+            }
+            TriggerControlViewModel.TriggerType.Bulb -> {
+                Text(
+                    fontSize = Dimens.BodyTextSize,
+                    color = MaterialTheme.colors.onBackground,
+                    text = if (isBulbActive) "LED is ON - Shutter is OPEN" else "Press button to toggle LED and shutter"
+                )
+            }
         }
     }
 
@@ -108,6 +114,7 @@ fun TriggerButtonPanel(
         enabled = isConnected,
     ) {
         val buttonText = when (triggerType) {
+            TriggerControlViewModel.TriggerType.Countdown -> if (startDelayedTrigger) "Stop" else "Start"
             TriggerControlViewModel.TriggerType.Bulb -> if (isBulbActive) "Turn OFF" else "Turn ON"
             else -> "Trigger shutter"
         }
