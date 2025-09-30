@@ -1,4 +1,4 @@
-# openrz67-android
+# OpenRZ67 for Android
 This is an Android app for controlling the [openrz67-trigger](https://github.com/mhellevang/openrz67-trigger) bluetooth remote trigger for the Mamiya RZ67 camera.
 
 ## Status:
@@ -11,4 +11,4 @@ The app works as intended for my use case, but I'm sure there are lots of improv
 - Trigger bulb mode (requires the camera to be set to bulb).
 
 ## Installation:
-I've yet to release the app anywhere, so the only way to get it running is to build it yourself. 
+Check out [releases](https://github.com/mhellevang/openrz67-android/releases/), or clone the repo and build it yourself.
