@@ -8,7 +8,12 @@ The app works as intended for my use case, but I'm sure there are lots of improv
 - Automatically connects to the openrz67-trigger, and re-connects if connection is broken
 - Trigger the camera using the shutter button
 - Trigger a delayed trigger with a user specified countdown
-- Trigger bulb mode (requires the camera to be set to bulb).
+- Trigger bulb mode (requires the camera to be set to bulb)
 
 ## Installation:
 Check out [releases](https://github.com/mhellevang/openrz67-android/releases/), or clone the repo and build it yourself.
+
+## Look & feel
+Not necessarily up to date.
+
+<img src="docs/images/Direct.jpg" width="400" alt="Direct">
