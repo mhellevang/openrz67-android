@@ -16,7 +16,7 @@ android {
         }
     }
     namespace 'dev.hellevang.openrz67'
-    compileSdk 36
+    compileSdkVersion 36
 
     defaultConfig {
         applicationId "dev.hellevang.openrz67"
@@ -37,6 +37,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "openrz67-${variant.versionName}-${variant.name}.apk"
+        }
+    }
+
     buildFeatures {
         compose true
     }
