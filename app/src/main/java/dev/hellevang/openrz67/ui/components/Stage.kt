@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,7 +42,8 @@ fun Stage(readout: String?, modifier: Modifier = Modifier) {
         if (readout != null) {
             Text(
                 text = readout,
-                fontSize = 120.sp,
+                autoSize = TextAutoSize.StepBased(minFontSize = 48.sp, maxFontSize = 120.sp),
+                maxLines = 1,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )

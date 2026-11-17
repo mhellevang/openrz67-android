@@ -72,7 +72,7 @@ fun ControlPanel(
         }
 
         Box(modifier = Modifier.height(72.dp), contentAlignment = Alignment.Center) {
-            val hint = when (triggerType) {
+            val hint = if (!isConnected) R.string.wake_hint else when (triggerType) {
                 TriggerType.Direct -> R.string.direct_hint
                 TriggerType.Countdown -> if (countdownRunning) R.string.countdown_running_hint else null
                 TriggerType.Bulb -> if (isBulbActive) R.string.bulb_hint_on else R.string.bulb_hint_off

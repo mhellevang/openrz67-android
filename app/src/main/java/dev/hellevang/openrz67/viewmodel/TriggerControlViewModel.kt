@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.hellevang.openrz67.bluetooth.BluetoothLink
 import dev.hellevang.openrz67.bluetooth.BluetoothManager
+import dev.hellevang.openrz67.bluetooth.ConnectionState
 import dev.hellevang.openrz67.bluetooth.SignalType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -19,7 +20,6 @@ class TriggerControlViewModel(
 ) : ViewModel() {
 
     private val bluetoothManager = link(viewModelScope)
-    private var bluetoothStarted = false
 
     private val _triggerType = MutableStateFlow(TriggerType.Direct)
     val triggerType: StateFlow<TriggerType> = _triggerType.asStateFlow()
@@ -39,8 +39,8 @@ class TriggerControlViewModel(
     private val _bulbElapsedSeconds = MutableStateFlow(0)
     val bulbElapsedSeconds: StateFlow<Int> = _bulbElapsedSeconds.asStateFlow()
 
-    val connectionState: StateFlow<String> = bluetoothManager.connectionState
-    val isConnected: StateFlow<Boolean> = bluetoothManager.isConnected
+    val connectionState: StateFlow<ConnectionState> = bluetoothManager.connectionState
+    val batteryPercent: StateFlow<Int?> = bluetoothManager.batteryPercent
 
     private var countdownJob: Job? = null
     private var bulbJob: Job? = null
@@ -51,23 +51,25 @@ class TriggerControlViewModel(
         Bulb
     }
 
+    init {
+        // The trigger closes the shutter itself when the connection drops.
+        viewModelScope.launch {
+            connectionState.collect { if (it != ConnectionState.Connected) showBulb(false) }
+        }
+    }
+
     /** Call once permissions are granted and Bluetooth is on. Safe to call repeatedly. */
-    fun startBluetooth() {
-        if (bluetoothStarted) return
-        bluetoothStarted = true
-        bluetoothManager.initialize()
-    }
+    fun connect() = bluetoothManager.connect()
 
-    fun reconnectBluetooth() {
-        bluetoothStarted = true
-        bluetoothManager.manualReconnect()
-    }
-
+    /** A running bulb or countdown is stopped first; the mode only changes once that stop got through. */
     fun setTriggerType(type: TriggerType) {
         if (type == _triggerType.value) return
-        if (_isBulbActive.value) setBulb(false)
-        if (_startDelayedTrigger.value) stopCountdown()
-        _triggerType.value = type
+        val switch = { _triggerType.value = type }
+        when {
+            _isBulbActive.value -> setBulb(false, switch)
+            _startDelayedTrigger.value -> stopCountdown(switch)
+            else -> switch()
+        }
     }
 
     fun handleTriggerButtonClick() {
@@ -84,7 +86,14 @@ class TriggerControlViewModel(
         }
     }
 
-    private fun setBulb(on: Boolean) = send(onSuccess = {
+    private fun setBulb(on: Boolean, then: () -> Unit = {}) = send(onSuccess = {
+        showBulb(on)
+        then()
+    }) {
+        bluetoothManager.sendSignal(SignalType.BulbMode, on)
+    }
+
+    private fun showBulb(on: Boolean) {
         _isBulbActive.value = on
         bulbJob?.cancel()
         _bulbElapsedSeconds.value = 0
@@ -96,17 +105,17 @@ class TriggerControlViewModel(
                 }
             }
         }
-    }) {
-        bluetoothManager.sendSignal(SignalType.BulbMode, on)
     }
 
     private fun startCountdown() = send(onSuccess = { startCountdownTimer() }) {
         bluetoothManager.sendCountdown(_countdownDuration.value, true)
     }
 
-    private fun stopCountdown() {
+    private fun stopCountdown(then: () -> Unit = {}) = send(onSuccess = {
         stopCountdownTimer()
-        send { bluetoothManager.sendCountdown(_countdownDuration.value, false) }
+        then()
+    }) {
+        bluetoothManager.sendCountdown(_countdownDuration.value, false)
     }
 
     /** Runs a BLE write; only updates local state via [onSuccess] if the write succeeded. */

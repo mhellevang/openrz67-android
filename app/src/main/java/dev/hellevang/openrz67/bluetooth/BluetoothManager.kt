@@ -5,13 +5,17 @@ import com.juul.kable.Filter
 import com.juul.kable.Peripheral
 import com.juul.kable.Scanner
 import com.juul.kable.State
+import com.juul.kable.WriteType
 import com.juul.kable.characteristicOf
 import com.juul.kable.peripheral
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
@@ -27,13 +31,14 @@ import kotlin.math.pow
  */
 class BluetoothManager(private val scope: CoroutineScope) : BluetoothLink {
     private lateinit var peripheral: Peripheral
+    private var setupJob: Job? = null
     private val connectionAttempt = AtomicInteger()
 
-    private val _connectionState = MutableStateFlow("Not connected")
-    override val connectionState: StateFlow<String> = _connectionState.asStateFlow()
+    private val _connectionState = MutableStateFlow(ConnectionState.Idle)
+    override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
-    private val _isConnected = MutableStateFlow(false)
-    override val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+    private val _batteryPercent = MutableStateFlow<Int?>(null)
+    override val batteryPercent: StateFlow<Int?> = _batteryPercent.asStateFlow()
 
     companion object {
         private const val TAG = "BluetoothManager"
@@ -46,33 +51,58 @@ class BluetoothManager(private val scope: CoroutineScope) : BluetoothLink {
         TARGET_CHARACTERISTIC_UUID.toString()
     )
 
-    override fun initialize() {
-        scope.launch {
-            try {
-                _connectionState.value = "Scanning for devices..."
-                val advertisement = Scanner {
-                    filters = listOf(Filter.Service(TARGET_SERVICE_UUID))
-                }.advertisements.first()
+    /** Standard Battery Service, Battery Level: one byte, percent. */
+    private val batteryLevel = characteristicOf(
+        "0000180f-0000-1000-8000-00805f9b34fb",
+        "00002a19-0000-1000-8000-00805f9b34fb"
+    )
 
-                _connectionState.value = "Device found, connecting..."
-                peripheral = scope.peripheral(advertisement)
+    override fun connect() {
+        connectionAttempt.set(0)
+        when {
+            ::peripheral.isInitialized ->
+                if (_connectionState.value != ConnectionState.Connected) scope.launchConnect()
+            setupJob?.isActive != true -> setupJob = scope.launch { scanAndConnect() }
+        }
+    }
 
-                enableAutoReconnect()
-                connect()
+    private suspend fun scanAndConnect() {
+        try {
+            _connectionState.value = ConnectionState.Scanning
+            val advertisement = Scanner {
+                filters = listOf(Filter.Service(TARGET_SERVICE_UUID))
+            }.advertisements.first()
 
-                peripheral.state.collect { state ->
-                    _connectionState.value = when (state) {
-                        is State.Connected -> "Connected"
-                        is State.Connecting -> "Connecting..."
-                        is State.Disconnecting -> "Disconnecting..."
-                        is State.Disconnected -> "Disconnected"
-                    }
-                    _isConnected.value = state is State.Connected
+            _connectionState.value = ConnectionState.Connecting
+            peripheral = scope.peripheral(advertisement)
+
+            scope.enableAutoReconnect()
+            scope.launchConnect()
+
+            peripheral.state.collectLatest { state ->
+                _connectionState.value = when (state) {
+                    is State.Connected -> ConnectionState.Connected
+                    is State.Connecting -> ConnectionState.Connecting
+                    is State.Disconnecting, is State.Disconnected -> ConnectionState.Disconnected
                 }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to initialize Bluetooth", e)
-                _connectionState.value = "Failed to initialize: ${e.message}"
+                if (state is State.Connected) trackBattery() else _batteryPercent.value = null
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to initialize Bluetooth", e)
+            _connectionState.value = ConnectionState.Failed
+        }
+    }
+
+    private suspend fun trackBattery() {
+        try {
+            _batteryPercent.value = peripheral.read(batteryLevel).firstOrNull()?.toInt()
+            peripheral.observe(batteryLevel).collect { _batteryPercent.value = it.firstOrNull()?.toInt() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.d(TAG, "No battery level: ${e.message}")
         }
     }
 
@@ -84,12 +114,12 @@ class BluetoothManager(private val scope: CoroutineScope) : BluetoothLink {
                 val waitMillis = minOf((500L * 2f.pow(attempt)).toLong(), 30_000L)
                 Log.d(TAG, "Reconnecting in $waitMillis ms (attempt ${attempt + 1})")
                 delay(waitMillis)
-                connect()
+                launchConnect()
             }
             .launchIn(this)
     }
 
-    private fun CoroutineScope.connect() {
+    private fun CoroutineScope.launchConnect() {
         launch {
             try {
                 peripheral.connect()
@@ -100,23 +130,14 @@ class BluetoothManager(private val scope: CoroutineScope) : BluetoothLink {
         }
     }
 
+    // WithResponse: the write only returns once the trigger has accepted the command.
     override suspend fun sendCountdown(durationSeconds: Int, start: Boolean) {
         val action: Byte = if (start) 1 else 0
-        peripheral.write(characteristic, byteArrayOf(3, durationSeconds.toByte(), action))
+        peripheral.write(characteristic, byteArrayOf(3, durationSeconds.toByte(), action), WriteType.WithResponse)
     }
 
     override suspend fun sendSignal(signalType: SignalType, on: Boolean) {
         val code = signalType.base + if (on) 1 else 0
-        peripheral.write(characteristic, byteArrayOf(code.toByte()))
-    }
-
-    override fun manualReconnect() {
-        connectionAttempt.set(0)
-        if (::peripheral.isInitialized) {
-            _connectionState.value = "Manual reconnection..."
-            scope.connect()
-        } else {
-            initialize()
-        }
+        peripheral.write(characteristic, byteArrayOf(code.toByte()), WriteType.WithResponse)
     }
 }

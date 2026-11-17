@@ -25,7 +25,7 @@ jobs:
       - id: version
         if: startsWith(github.ref, 'refs/tags/')
         run: echo "name=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-      - run: ./gradlew assembleRelease bundleRelease
+      - run: ./gradlew testDebugUnitTest assembleRelease bundleRelease
         env:
           VERSION_NAME: ${{ steps.version.outputs.name }}
           KEYSTORE_FILE: ${{ runner.temp }}/release.jks

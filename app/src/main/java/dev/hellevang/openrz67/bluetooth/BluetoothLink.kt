@@ -8,13 +8,24 @@ enum class SignalType(val base: Int) {
     BulbMode(20)
 }
 
+enum class ConnectionState {
+    Idle,
+    Scanning,
+    Connecting,
+    Connected,
+    Disconnected,
+    Failed
+}
+
 /** What the ViewModel needs from the trigger connection. Implemented by [BluetoothManager]. */
 interface BluetoothLink {
-    val connectionState: StateFlow<String>
-    val isConnected: StateFlow<Boolean>
+    val connectionState: StateFlow<ConnectionState>
 
-    fun initialize()
-    fun manualReconnect()
+    /** Null while unknown: not connected, or a trigger without the Battery Service. */
+    val batteryPercent: StateFlow<Int?>
+
+    /** Starts scanning, or retries the connection. Safe to call in any state. */
+    fun connect()
 
     /** Writes throw on failure; callers decide how to surface that. */
     suspend fun sendCountdown(durationSeconds: Int, start: Boolean)

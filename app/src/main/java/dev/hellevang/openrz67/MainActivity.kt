@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import dev.hellevang.openrz67.bluetooth.ConnectionState
 import dev.hellevang.openrz67.ui.components.ControlPanel
 import dev.hellevang.openrz67.ui.components.Header
 import dev.hellevang.openrz67.ui.components.Stage
@@ -48,14 +49,14 @@ class MainActivity : ComponentActivity() {
     private val enableBluetooth = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) viewModel.startBluetooth()
+        if (result.resultCode == Activity.RESULT_OK) connect()
     }
 
     private val requestPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { granted ->
         if (granted.values.all { it }) {
-            ensureBluetoothEnabled()
+            connect()
         } else {
             Toast.makeText(this, getString(R.string.permission_required), Toast.LENGTH_LONG).show()
         }
@@ -66,7 +67,7 @@ class MainActivity : ComponentActivity() {
         val bars = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
         enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
 
-        if (hasPermissions()) ensureBluetoothEnabled() else requestPermissions.launch(requiredPermissions)
+        connect()
 
         setContent {
             OpenRZ67Theme {
@@ -74,7 +75,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    OpenRZ67App(viewModel)
+                    OpenRZ67App(viewModel, onReconnect = ::connect)
                 }
             }
         }
@@ -84,20 +85,22 @@ class MainActivity : ComponentActivity() {
         ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun ensureBluetoothEnabled() {
+    /** Asks for whatever is still missing (permission, Bluetooth on) before connecting. */
+    private fun connect() {
         val adapter = getSystemService(BluetoothManager::class.java).adapter
-        if (adapter?.isEnabled == true) {
-            viewModel.startBluetooth()
-        } else {
-            enableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
+        when {
+            !hasPermissions() -> requestPermissions.launch(requiredPermissions)
+            adapter?.isEnabled != true -> enableBluetooth.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
+            else -> viewModel.connect()
         }
     }
 }
 
 @Composable
-private fun OpenRZ67App(viewModel: TriggerControlViewModel) {
+private fun OpenRZ67App(viewModel: TriggerControlViewModel, onReconnect: () -> Unit) {
     val connectionState by viewModel.connectionState.collectAsState()
-    val isConnected by viewModel.isConnected.collectAsState()
+    val batteryPercent by viewModel.batteryPercent.collectAsState()
+    val isConnected = connectionState == ConnectionState.Connected
     val triggerType by viewModel.triggerType.collectAsState()
     val countdownRunning by viewModel.startDelayedTrigger.collectAsState()
     val countdownTimeLeft by viewModel.countdownTimeLeft.collectAsState()
@@ -113,7 +116,7 @@ private fun OpenRZ67App(viewModel: TriggerControlViewModel) {
             .systemBarsPadding()
             .padding(horizontal = 20.dp)
     ) {
-        Header(connectionState, isConnected, onReconnect = viewModel::reconnectBluetooth)
+        Header(connectionState, batteryPercent, onReconnect)
         Stage(
             readout = when {
                 countdownRunning -> countdownTimeLeft.toString()

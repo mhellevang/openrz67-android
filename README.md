@@ -6,6 +6,7 @@ The app works as intended for my use case, but I'm sure there are lots of improv
 
 ## Features:
 - Automatically connects to the openrz67-trigger, and re-connects if connection is broken
+- Shows the trigger's battery level
 - Trigger the camera using the shutter button
 - Trigger a delayed trigger with a user specified countdown
 - Trigger bulb mode. The trigger only holds the release; the camera must be set to B (bulb), or it just takes one normal picture at the dialed speed

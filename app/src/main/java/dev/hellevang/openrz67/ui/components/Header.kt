@@ -22,9 +22,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.hellevang.openrz67.R
+import dev.hellevang.openrz67.bluetooth.ConnectionState
 
 @Composable
-fun Header(connectionState: String, isConnected: Boolean, onReconnect: () -> Unit) {
+fun Header(connectionState: ConnectionState, batteryPercent: Int?, onReconnect: () -> Unit) {
+    val isConnected = connectionState == ConnectionState.Connected
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -40,7 +42,16 @@ fun Header(connectionState: String, isConnected: Boolean, onReconnect: () -> Uni
                 Spacer(Modifier.size(8.dp).clip(CircleShape).background(dot))
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = connectionState,
+                    text = when (connectionState) {
+                        ConnectionState.Idle -> stringResource(R.string.state_idle)
+                        ConnectionState.Scanning -> stringResource(R.string.state_scanning)
+                        ConnectionState.Connecting -> stringResource(R.string.state_connecting)
+                        ConnectionState.Connected ->
+                            if (batteryPercent == null) stringResource(R.string.state_connected)
+                            else stringResource(R.string.state_connected_battery, batteryPercent)
+                        ConnectionState.Disconnected -> stringResource(R.string.state_disconnected)
+                        ConnectionState.Failed -> stringResource(R.string.state_failed)
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -4,6 +4,15 @@
     <string name="permission_required">Bluetooth permission is required</string>
     <string name="reconnect">Reconnect</string>
 
+    <string name="state_idle">Not connected</string>
+    <string name="state_scanning">Searching for trigger…</string>
+    <string name="state_connecting">Connecting…</string>
+    <string name="state_connected">Connected</string>
+    <string name="state_connected_battery">Connected · battery %1$d%%</string>
+    <string name="state_disconnected">Disconnected</string>
+    <string name="state_failed">Bluetooth failed</string>
+    <string name="wake_hint">Press the button on the trigger to wake it</string>
+
     <string name="mode_direct">Direct</string>
     <string name="mode_countdown">Countdown</string>
     <string name="mode_bulb">Bulb</string>

@@ -1,6 +1,7 @@
 package dev.hellevang.openrz67.viewmodel
 
 import dev.hellevang.openrz67.bluetooth.BluetoothLink
+import dev.hellevang.openrz67.bluetooth.ConnectionState
 import dev.hellevang.openrz67.bluetooth.SignalType
 import dev.hellevang.openrz67.viewmodel.TriggerControlViewModel.TriggerType
 import kotlinx.coroutines.Dispatchers
@@ -107,6 +108,49 @@ class TriggerControlViewModelTest {
     }
 
     @Test
+    fun `disconnect clears bulb, since the trigger closes the shutter itself`() = runTest(dispatcher) {
+        vm.setTriggerType(TriggerType.Bulb)
+        vm.handleTriggerButtonClick()
+        runCurrent()
+        assertTrue(vm.isBulbActive.value)
+
+        link.connectionState.value = ConnectionState.Disconnected
+        runCurrent()
+        assertFalse(vm.isBulbActive.value)
+        assertEquals(0, vm.bulbElapsedSeconds.value)
+    }
+
+    @Test
+    fun `mode does not change when the stop fails`() = runTest(dispatcher) {
+        vm.setTriggerType(TriggerType.Bulb)
+        vm.handleTriggerButtonClick()
+        runCurrent()
+
+        link.fail = true
+        vm.setTriggerType(TriggerType.Direct)
+        runCurrent()
+        assertEquals(TriggerType.Bulb, vm.triggerType.value)
+        assertTrue(vm.isBulbActive.value)
+
+        // runTest never finishes while the elapsed-time ticker is alive
+        link.fail = false
+        vm.handleTriggerButtonClick()
+        runCurrent()
+    }
+
+    @Test
+    fun `countdown keeps running when the stop fails`() = runTest(dispatcher) {
+        vm.setTriggerType(TriggerType.Countdown)
+        vm.handleTriggerButtonClick()
+        runCurrent()
+
+        link.fail = true
+        vm.handleTriggerButtonClick()
+        runCurrent()
+        assertTrue(vm.startDelayedTrigger.value)
+    }
+
+    @Test
     fun `duration must fit in one byte`() {
         vm.setCountdownDuration(0)
         assertEquals(10, vm.countdownDuration.value)
@@ -117,13 +161,12 @@ class TriggerControlViewModelTest {
     }
 
     private class FakeLink : BluetoothLink {
-        override val connectionState = MutableStateFlow("fake")
-        override val isConnected = MutableStateFlow(true)
+        override val connectionState = MutableStateFlow(ConnectionState.Connected)
+        override val batteryPercent = MutableStateFlow<Int?>(null)
         val writes = mutableListOf<String>()
         var fail = false
 
-        override fun initialize() = Unit
-        override fun manualReconnect() = Unit
+        override fun connect() = Unit
 
         override suspend fun sendCountdown(durationSeconds: Int, start: Boolean) =
             write("countdown $durationSeconds ${if (start) "start" else "stop"}")
